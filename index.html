@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Output</title>
+    <style>
+        #cameraContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        #cameraOutput {
+            width: 640px;
+            height: 480px;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <div id="cameraContainer">
+        <div id="cameraOutput"></div>
+        <select id="cameraDropdown">
+            <!-- The options will be filled dynamically using JavaScript -->
+        </select>
+        <button id="saveButton">Save Image</button>
+    </div>
+
+    <script>
+        // JavaScript code here
+        document.addEventListener("DOMContentLoaded", async function () {
+            const cameraOutput = document.getElementById("cameraOutput");
+            const cameraDropdown = document.getElementById("cameraDropdown");
+            const saveButton = document.getElementById("saveButton");
+
+            let currentStream;
+
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            if (videoDevices.length === 0) {
+                throw new Error('No video input devices found.');
+            }
+
+            // Populate the dropdown with available cameras
+            cameraDropdown.innerHTML = ''; // Clear the dropdown first
+            videoDevices.forEach((device, index) => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${index + 1}`;
+                cameraDropdown.appendChild(option);
+            });
+
+            // Function to start the camera stream
+            async function startCamera() {
+                try {
+                    
+
+                    // Set the default camera to the first available device
+                    const selectedCamera = cameraDropdown.value || videoDevices[0].deviceId;
+
+                    // Start the camera stream
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            deviceId: { exact: selectedCamera },
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        }
+                    });
+
+                    // Display the camera stream on the webpage
+                    cameraOutput.innerHTML = '';
+                    cameraOutput.appendChild(document.createElement('video'));
+                    const videoElement = cameraOutput.querySelector('video');
+                    videoElement.srcObject = currentStream;
+                    videoElement.play();
+
+                } catch (err) {
+                    console.error('Error accessing the camera:', err);
+                }
+            }
+
+            // Function to stop the camera stream
+            function stopCamera() {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+            }
+
+            // Function to change the camera based on the selected dropdown option
+            function changeCamera() {
+                stopCamera();
+                startCamera();
+            }
+
+            // Function to save the current frame as an image
+            function saveImage() {
+                const videoElement = cameraOutput.querySelector('video');
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                canvas.getContext('2d').drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                const image = canvas.toDataURL('image/jpeg');
+                const downloadLink = document.createElement('a');
+                downloadLink.href = image;
+                downloadLink.download = 'camera_image.jpg';
+                downloadLink.click();
+            }
+
+            // Attach event listeners
+            cameraDropdown.addEventListener('change', changeCamera);
+            saveButton.addEventListener('click', saveImage);
+
+            // Start the camera when the page loads
+            startCamera();
+        });
+    </script>
+</body>
+</html>
